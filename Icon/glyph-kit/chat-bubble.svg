@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- A single rounded chat bubble with a tail. Alternative to the avatar: duplicate as two
+       overlapping layers to convey switching between conversations. -->
+  <g fill="#FFFFFF">
+    <rect x="72" y="104" width="368" height="256" rx="76" ry="76"/>
+    <path d="M168 332 L150 436 L262 350 Z"/>
+  </g>
+</svg>

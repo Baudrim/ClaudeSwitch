@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Single curved arrow (top arc, head at the right pointing down). Pair it with
+       swap-arrow-mirror.svg to form the circular switch motion. Pure white so you can set
+       any fill/gradient on the layer in Icon Composer. -->
+  <path d="M104 256 C 128 132 384 132 408 256"
+        stroke="#FFFFFF" stroke-width="46" stroke-linecap="round"/>
+  <path fill="#FFFFFF" d="M408 322 L360 244 L456 244 Z"/>
+</svg>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- A single account avatar (head + shoulders). Duplicate this as two layers in Icon
+       Composer, offset them so they overlap, and give the back one a lower opacity (or a
+       different tint) so the pair clearly reads as multiple accounts. -->
+  <g fill="#FFFFFF">
+    <circle cx="256" cy="180" r="94"/>
+    <path d="M256 252 C 352 252 422 322 430 452 C 431 464 423 472 411 472 L 101 472 C 89 472 81 464 82 452 C 90 322 160 252 256 252 Z"/>
+  </g>
+</svg>

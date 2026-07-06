@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Generic four-point AI sparkle. Evokes the AI/chat context without copying any
+       trademarked mark. Use small as an accent (e.g. on an avatar or in a corner). -->
+  <path fill="#FFFFFF"
+        d="M256 40 C 274 196 316 238 472 256 C 316 274 274 316 256 472 C 238 316 196 274 40 256 C 196 238 238 196 256 40 Z"/>
+</svg>

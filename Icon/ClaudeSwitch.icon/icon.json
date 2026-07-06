@@ -1,36 +1,59 @@
 {
-  "fill" : {
-    "automatic-gradient" : "display-p3:0.79963,0.48605,0.36859,1.00000"
-  },
+  "features" : [
+    "refractivity"
+  ],
+  "fill-specializations" : [
+    {
+      "value" : {
+        "linear-gradient" : [
+          "display-p3:0.98997,0.62731,0.49146,1.00000",
+          "display-p3:0.79963,0.48605,0.36859,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "automatic-gradient" : "display-p3:0.52157,0.29668,0.21194,1.00000"
+      }
+    }
+  ],
   "groups" : [
     {
       "layers" : [
         {
           "fill" : {
-            "solid" : "gray:1.00000,1.00000"
+            "solid" : "display-p3:0.88923,0.88923,0.88923,1.00000"
           },
-          "image-name" : "arrow-right-left-343-svgrepo-com.svg",
-          "name" : "arrow-right-left-343-svgrepo-com",
+          "image-name" : "arrowfront.svg",
+          "name" : "arrowfront",
           "position" : {
-            "scale" : 0.6,
+            "scale" : 1,
             "translation-in-points" : [
-              174.53026108119138,
-              216.0000856583037
+              24.622389104535756,
+              64.32575700952339
             ]
           }
         },
         {
-          "image-name" : "claudelogo.svg",
-          "name" : "claudelogo",
+          "image-name" : "spark 2.svg",
+          "name" : "spark 2",
           "position" : {
-            "scale" : 0.4,
+            "scale" : 0.35,
             "translation-in-points" : [
-              -185.7853071400856,
-              -169.7686544885413
+              155.32376503218313,
+              165.3231896014155
             ]
           }
         }
       ],
+      "position" : {
+        "scale" : 1.8,
+        "translation-in-points" : [
+          -27.252381224562214,
+          -35.13019506842352
+        ]
+      },
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.6
@@ -38,6 +61,100 @@
       "translucency" : {
         "enabled" : true,
         "value" : 0.2
+      }
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "avatar 3.svg",
+          "name" : "avatar 3",
+          "position" : {
+            "scale" : 1.2,
+            "translation-in-points" : [
+              -215.25021496091517,
+              49.42507059984621
+            ]
+          }
+        }
+      ],
+      "refractivity" : {
+        "depth" : 0,
+        "enabled" : true,
+        "strength" : 0.4667578125
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.1
+      }
+    },
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "solid" : "display-p3:0.88923,0.88923,0.88923,1.00000"
+          },
+          "image-name" : "arrowbehind.svg",
+          "name" : "arrowbehind",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              8.983807503759607,
+              -49.64494547362179
+            ]
+          }
+        }
+      ],
+      "position" : {
+        "scale" : 1.8,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "refractivity" : {
+        "depth" : 0,
+        "enabled" : true,
+        "strength" : 0.0371484375
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.8
+      }
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "avatar 2.svg",
+          "name" : "avatar 2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              186.24618467991286,
+              -222.57653543696927
+            ]
+          }
+        }
+      ],
+      "refractivity" : {
+        "depth" : 0.2317578125,
+        "enabled" : true,
+        "strength" : 1
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.61
       }
     }
   ],

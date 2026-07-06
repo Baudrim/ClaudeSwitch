@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- swap-arrow.svg rotated 180 degrees (bottom arc, head at the left pointing up).
+       Place it opposite the single arrow to complete the circular switch motion. -->
+  <path d="M408 256 C 384 380 128 380 104 256"
+        stroke="#FFFFFF" stroke-width="46" stroke-linecap="round"/>
+  <path fill="#FFFFFF" d="M104 190 L152 268 L56 268 Z"/>
+</svg>
