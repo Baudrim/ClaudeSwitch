@@ -54,8 +54,8 @@ Building yourself skips the Gatekeeper warning entirely. `project.yml` is the on
 
 ```bash
 brew install xcodegen   # once
-git clone https://github.com/Baudrim/ClaudeAppSwitch.git
-cd ClaudeAppSwitch
+git clone https://github.com/Baudrim/ClaudeSwitch.git
+cd ClaudeSwitch
 xcodegen generate
 open ClaudeSwitch.xcodeproj
 ```
