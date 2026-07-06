@@ -18,28 +18,35 @@ Snapshots live under `~/Library/Application Support/ClaudeSwitch/snapshots/<uuid
 
 ## Requirements
 
-- **macOS 26** or later (uses Liquid Glass / Icon Composer APIs).
+- **macOS 26** (Tahoe) or later.
 - The [Claude desktop app](https://claude.ai/download) installed.
-- To build: **Xcode 26+** and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
-## Installation
+## Install (no Xcode, no Terminal)
 
-### Option A -- Download a prebuilt build
+1. Go to the [**Releases**](../../releases) page and download **`ClaudeSwitch.zip`** (under the latest release's *Assets*).
+2. Double-click the zip to unzip it — you'll get **`ClaudeSwitch.app`**.
+3. Drag **`ClaudeSwitch.app`** into your **Applications** folder.
+4. **First launch (do this once).** ClaudeSwitch is free and open source but not distributed through the App Store, so macOS asks you to confirm it the first time:
+   - **Right-click** (or Ctrl-click) `ClaudeSwitch` in Applications → click **Open** → click **Open** again in the dialog.
+   - If macOS still refuses and only offers *Done*: open **System Settings → Privacy & Security**, scroll to the **Security** section, and click **Open Anyway** next to "ClaudeSwitch was blocked", then confirm with Touch ID / password.
+   - You only need to do this once; afterwards it launches normally.
+5. Look at the **top-right of your menu bar** — ClaudeSwitch runs there (it has no Dock icon and no window).
+6. The first time you switch accounts, macOS asks for **Automation** permission (to quit & relaunch Claude). Click **OK**.
 
-1. Download `ClaudeSwitch.zip` from the [Releases](../../releases) page and unzip it.
-2. Move `ClaudeSwitch.app` to `/Applications`.
-3. Because the build is ad-hoc signed (not notarized), macOS Gatekeeper will block it on first launch. Clear the quarantine flag once:
+> Why the warning? Apps signed with a paid Apple Developer certificate skip it. This one is signed locally to keep it free — the source is right here if you want to inspect or build it yourself.
 
-   ```bash
-   xattr -dr com.apple.quarantine /Applications/ClaudeSwitch.app
-   ```
+## Usage
 
-   Alternatively: right-click the app > **Open**, then confirm in the dialog, or allow it from **System Settings > Privacy & Security > "Open Anyway"**.
-4. Launch it -- ClaudeSwitch lives in the menu bar (there's no Dock icon or main window).
+1. **First launch:** ClaudeSwitch will ask for **Automation** permission the first time it needs to quit/relaunch Claude (System Settings > Privacy & Security > Automation). This is required to swap the active session.
+2. **Add an account:** sign into Claude with the account you want to save, then click **+** in the menu bar dropdown and give it a label. Claude's own UI handles login; ClaudeSwitch just captures the result.
+3. **Switch:** click **Switch** on any saved account. ClaudeSwitch quits Claude, restores that account's snapshot, and relaunches. The active account slides to the top.
+4. **Refresh:** re-captures the currently active account's session so its snapshot doesn't go stale.
 
-### Option B -- Build from source
+## For developers
 
-`project.yml` is the only source of truth for the Xcode project (via XcodeGen); `ClaudeSwitch.xcodeproj` is disposable and git-ignored.
+### Build & run from source
+
+Building yourself skips the Gatekeeper warning entirely. `project.yml` is the only source of truth for the Xcode project (via [XcodeGen](https://github.com/yonaskolb/XcodeGen)); `ClaudeSwitch.xcodeproj` is disposable and git-ignored. You need **Xcode 26+**.
 
 ```bash
 brew install xcodegen   # once
@@ -49,18 +56,11 @@ xcodegen generate
 open ClaudeSwitch.xcodeproj
 ```
 
-Then press **Run** in Xcode. Building from source avoids the Gatekeeper quarantine step entirely.
+Then press **Run** in Xcode.
 
-## Usage
+### Package a shareable build
 
-1. **First launch:** ClaudeSwitch will ask for **Automation** permission the first time it needs to quit/relaunch Claude (System Settings > Privacy & Security > Automation). This is required to swap the active session.
-2. **Add an account:** sign into Claude with the account you want to save, then click **+** in the menu bar dropdown and give it a label. Claude's own UI handles login; ClaudeSwitch just captures the result.
-3. **Switch:** click **Switch** on any saved account. ClaudeSwitch quits Claude, restores that account's snapshot, and relaunches. The active account slides to the top.
-4. **Refresh:** re-captures the currently active account's session so its snapshot doesn't go stale.
-
-## Packaging a distributable build
-
-`scripts/package.sh` builds a Release `.app`, ad-hoc signs it, and zips it into `dist/`:
+`scripts/package.sh` builds a Release `.app`, ad-hoc signs it, and zips it into `dist/ClaudeSwitch.zip` — the file to attach to a GitHub Release:
 
 ```bash
 ./scripts/package.sh
@@ -68,11 +68,11 @@ Then press **Run** in Xcode. Building from source avoids the Gatekeeper quaranti
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./scripts/package.sh
 ```
 
-For friction-free public distribution, swap the ad-hoc signing step for a Developer ID identity + notarization (see the `NOTARIZE` note inside the script).
+For a friction-free install (no Gatekeeper prompt for users), swap the ad-hoc signing step for a Developer ID identity + notarization — see the `NOTARIZE` note inside the script. This requires a paid Apple Developer account.
 
 ## Credits & assets
 
-- App icon composed with Xcode's Icon Composer. If you fork this for public distribution, review the icon assets in `Icon/ClaudeSwitch.icon/Assets/` for third-party trademarks and license terms before shipping.
+- App icon composed with Xcode's Icon Composer from original artwork (`Icon/ClaudeSwitch.icon/`). The reusable white glyph sources live in `Icon/glyph-kit/`.
 
 ## Status
 
