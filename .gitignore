@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Build output
+build/
+dist/
+DerivedData/
+
+# Xcode project is generated from project.yml by xcodegen -- treat it as disposable.
+*.xcodeproj/
+
+# Xcode user-specific state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Logs
+*.log

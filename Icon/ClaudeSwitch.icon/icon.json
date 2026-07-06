@@ -1,0 +1,50 @@
+{
+  "fill" : {
+    "automatic-gradient" : "display-p3:0.79963,0.48605,0.36859,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "solid" : "gray:1.00000,1.00000"
+          },
+          "image-name" : "arrow-right-left-343-svgrepo-com.svg",
+          "name" : "arrow-right-left-343-svgrepo-com",
+          "position" : {
+            "scale" : 0.6,
+            "translation-in-points" : [
+              174.53026108119138,
+              216.0000856583037
+            ]
+          }
+        },
+        {
+          "image-name" : "claudelogo.svg",
+          "name" : "claudelogo",
+          "position" : {
+            "scale" : 0.4,
+            "translation-in-points" : [
+              -185.7853071400856,
+              -169.7686544885413
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
