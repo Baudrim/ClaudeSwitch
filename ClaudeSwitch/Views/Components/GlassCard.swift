@@ -97,20 +97,27 @@ struct HoverPillButtonStyle: ButtonStyle {
 /// and hover deepens the tint. Requires macOS 26, which the app targets.
 struct GlassPillButtonStyle: ButtonStyle {
     var tint: Color?
+    /// Optional shared content width so sibling pills (e.g. Switch / Refresh, shown one per card)
+    /// line up to the same length regardless of their label.
+    var minWidth: CGFloat?
 
     func makeBody(configuration: Configuration) -> some View {
-        GlassPill(configuration: configuration, tint: tint)
+        GlassPill(configuration: configuration, tint: tint, minWidth: minWidth)
     }
 
     private struct GlassPill: View {
         let configuration: Configuration
         let tint: Color?
+        let minWidth: CGFloat?
         @State private var isHovered = false
 
         var body: some View {
             configuration.label
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.primary)
+                // Fixed content height so pills with different SF Symbols (whose intrinsic heights
+                // vary) stay the same height; minWidth keeps sibling pills the same length.
+                .frame(minWidth: minWidth, minHeight: 16, maxHeight: 16)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .glassEffect(glass, in: Capsule())
@@ -147,10 +154,10 @@ struct GlassIconButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(.white)
                 .frame(width: diameter, height: diameter)
                 .glassEffect(
-                    .regular.tint(Theme.accent.opacity(isHovered ? 0.55 : 0.38)),
+                    .regular.tint(Theme.accent.opacity(isHovered ? 0.75 : 0.6)),
                     in: Circle()
                 )
                 .contentShape(Circle())

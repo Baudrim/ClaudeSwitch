@@ -104,15 +104,14 @@ struct AccountRowView: View {
                             } label: {
                                 Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .buttonStyle(GlassPillButtonStyle(tint: Theme.accent, minWidth: 64))
                         } else {
-                            Button("Switch") {
+                            Button {
                                 Task { await appState.switchTo(account) }
+                            } label: {
+                                Label("Switch", systemImage: "arrow.left.arrow.right")
                             }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                            .tint(Theme.accent)
+                            .buttonStyle(GlassPillButtonStyle(tint: Theme.accent, minWidth: 64))
                         }
                     }
                 }
