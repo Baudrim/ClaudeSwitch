@@ -24,11 +24,10 @@ struct ClaudeSwitchApp: App {
             // environment for descendant rows.
             MenuContentView(appState: appDelegate.appState)
         } label: {
-            // SF Symbol matches the swap-arrows concept and is auto-sized/monochrome for the
-            // status bar. A custom vector asset ignores frame constraints inside MenuBarExtra and
-            // renders at its huge intrinsic size, so the symbol is the reliable choice here; the
-            // colorful app icon stays reserved for Finder/About.
-            Image(systemName: "arrow.left.arrow.right")
+            // Custom swap glyph matching the app icon's arrows. It renders correctly in the
+            // status bar because the asset declares an 18pt intrinsic size and template rendering
+            // (a large intrinsic size is what previously made a vector asset render oversized).
+            Image("MenuBarSwap")
         }
         .menuBarExtraStyle(.window)
 

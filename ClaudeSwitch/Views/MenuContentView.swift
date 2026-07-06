@@ -84,7 +84,12 @@ struct MenuContentView: View {
 
     private var header: some View {
         HStack {
-            Image(systemName: "circle.hexagonpath.fill")
+            // Reuse the app's swap glyph (tinted amber) so the popup header matches the icon
+            // and the status bar item instead of a generic placeholder symbol.
+            Image("MenuBarSwap")
+                .resizable()
+                .renderingMode(.template)
+                .frame(width: 16, height: 16)
                 .foregroundStyle(Theme.accent)
             Text("ClaudeSwitch")
                 .font(.headline)
