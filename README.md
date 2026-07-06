@@ -2,6 +2,10 @@
 
 A minimalist macOS menu bar app for saving and switching between accounts in the **Claude desktop app** (`Claude.app`, `com.anthropic.claudefordesktop`) -- the Electron-based chat client, not the Claude Code CLI.
 
+<p align="center">
+  <img src="docs/demo.png" alt="ClaudeSwitch menu bar popup listing two saved accounts, with the active one on top" width="409">
+</p>
+
 > **Disclaimer:** ClaudeSwitch is an independent, unofficial tool. It is **not affiliated with, endorsed by, or sponsored by Anthropic**. "Claude" and the Claude logo are trademarks of Anthropic; they are referenced here only to identify the app this tool interoperates with (nominative use).
 
 ## How it works
