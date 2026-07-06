@@ -77,6 +77,15 @@ final class AppState {
         }
     }
 
+    /// Signs the live account out locally and relaunches Claude on its login screen so the user
+    /// can sign into another account to add. Only offered when the live account is already saved,
+    /// so clearing the live session is non-destructive (its snapshot remains).
+    func logOutToAddAccount() async {
+        await run(busyMessage: "Signing out of Claude…") {
+            try await self.desktop.logOutForNewAccount()
+        }
+    }
+
     // MARK: - Claude App Location
 
     func selectClaudeApp(at url: URL) async {

@@ -1,39 +1,54 @@
 import SwiftUI
 
-/// Inline "add account" form. Captures whichever account is currently signed into Claude --
-/// there is no separate login flow to trigger, since Claude's own UI already handles login.
-///
-/// Detects up front if that account was already saved (comparing Claude's own
-/// `lastKnownAccountUuid`, not the user-chosen label) so re-adding it refreshes the existing
-/// entry instead of silently renaming it or creating a confusing duplicate.
+/// Inline "add account" form. There is no separate login flow to drive -- Claude's own UI handles
+/// sign-in -- so this view watches Claude's live account (`lastKnownAccountUuid`) and reacts:
+///   - a new, unsaved account is live  -> green "new account detected", name and save it;
+///   - an already-saved account is live -> offer to refresh it, or sign out to add another;
+///   - no account is live (logged out)  -> wait for the user to sign in, detecting it live.
 struct AddAccountView: View {
     @Environment(AppState.self) private var appState
     @Binding var isPresented: Bool
 
     @State private var label = ""
-    @State private var duplicateOf: DesktopAccount?
+    @State private var liveAccountId: UUID?
+    @State private var alreadySaved: DesktopAccount?
     @FocusState private var isLabelFocused: Bool
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                if let duplicate = duplicateOf {
-                    duplicateNotice(duplicate)
+                if let alreadySaved {
+                    duplicateNotice(alreadySaved)
+                } else if liveAccountId != nil {
+                    newAccountForm
                 } else {
-                    addForm
+                    waitingForLogin
                 }
             }
             .padding(14)
         }
-        .onAppear(perform: checkForDuplicate)
+        // Reset the label (and focus it) only when the live account actually changes, so polling
+        // never clobbers what the user is typing.
+        .onChange(of: liveAccountId) { _, id in
+            if let id, let existing = appState.existingAccount(for: id) {
+                label = existing.label
+            } else {
+                label = ""
+                isLabelFocused = true
+            }
+        }
+        .task { await pollLiveAccount() }
     }
 
-    private var addForm: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Add current Claude account")
-                .font(.subheadline.weight(.semibold))
+    // MARK: - States
 
-            Text("Make sure you're signed into the account you want to save in Claude, then name it below. Claude will quit and relaunch to capture it safely.")
+    private var newAccountForm: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("New account detected", systemImage: "checkmark.seal.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.green)
+
+            Text("Claude is signed into a new account. Give it a name to save it here. Claude will quit and relaunch to capture it safely.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -41,30 +56,28 @@ struct AddAccountView: View {
             labelField
 
             HStack {
-                Button("Cancel") {
-                    isPresented = false
-                }
-                .buttonStyle(HoverPillButtonStyle())
-                .font(.caption)
+                Button("Cancel") { isPresented = false }
+                    .buttonStyle(HoverPillButtonStyle())
+                    .font(.caption)
 
                 Spacer()
 
                 Button("Add Account", action: submit)
                     .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
+                    .tint(.green)
                     .controlSize(.small)
-                    .disabled(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(trimmedLabel.isEmpty)
             }
         }
     }
 
     private func duplicateNotice(_ duplicate: DesktopAccount) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Already saved", systemImage: "exclamationmark.triangle.fill")
+            Label("Already saved", systemImage: "checkmark.circle.fill")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.accent)
 
-            Text("Claude is signed into an account you already saved as “\(duplicate.effectiveLabel)”. Adding it again just refreshes that snapshot -- rename it below if you'd like.")
+            Text("Claude is signed into “\(duplicate.effectiveLabel)”, which you've already saved. Refresh its snapshot, or sign out to add a different account.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -72,19 +85,46 @@ struct AddAccountView: View {
             labelField
 
             HStack {
-                Button("Cancel") {
-                    isPresented = false
-                }
-                .buttonStyle(HoverPillButtonStyle())
-                .font(.caption)
+                Button("Cancel") { isPresented = false }
+                    .buttonStyle(HoverPillButtonStyle())
+                    .font(.caption)
 
                 Spacer()
 
-                Button("Refresh Account", action: submit)
+                Button("Sign out") {
+                    Task { await appState.logOutToAddAccount() }
+                }
+                .buttonStyle(HoverPillButtonStyle())
+                .font(.caption)
+                .help("Sign out locally and relaunch Claude so you can add a different account")
+
+                Button("Refresh", action: submit)
                     .buttonStyle(.borderedProminent)
                     .tint(Theme.accent)
                     .controlSize(.small)
-                    .disabled(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(trimmedLabel.isEmpty)
+            }
+        }
+    }
+
+    private var waitingForLogin: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Waiting for Claude sign-in…")
+                    .font(.subheadline.weight(.semibold))
+            }
+
+            Text("Sign into the account you want to add in the Claude window -- it'll be detected here automatically.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                Spacer()
+                Button("Cancel") { isPresented = false }
+                    .buttonStyle(HoverPillButtonStyle())
+                    .font(.caption)
             }
         }
     }
@@ -98,18 +138,27 @@ struct AddAccountView: View {
             .onSubmit(submit)
     }
 
-    private func checkForDuplicate() {
-        if let id = appState.currentLiveAccountId(), let existing = appState.existingAccount(for: id) {
-            duplicateOf = existing
-            label = existing.label
+    // MARK: - Logic
+
+    private var trimmedLabel: String {
+        label.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Cheap poll of Claude's live account so the UI reacts to sign-in/out without the user having
+    /// to reopen the form. Reads `lastKnownAccountUuid` from config.json (a plain file read).
+    private func pollLiveAccount() async {
+        while !Task.isCancelled {
+            let id = appState.currentLiveAccountId()
+            if id != liveAccountId { liveAccountId = id }
+            let saved = id.flatMap { appState.existingAccount(for: $0) }
+            if saved != alreadySaved { alreadySaved = saved }
+            try? await Task.sleep(for: .seconds(1.5))
         }
-        isLabelFocused = true
     }
 
     private func submit() {
-        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmedLabel.isEmpty else { return }
         isPresented = false
-        Task { await appState.addCurrentAccount(label: trimmed) }
+        Task { await appState.addCurrentAccount(label: trimmedLabel) }
     }
 }

@@ -92,6 +92,76 @@ struct HoverPillButtonStyle: ButtonStyle {
     }
 }
 
+/// "Liquid Glass" capsule button for standalone actions (footer Settings/Quit). Always shows the
+/// glass material so it reads as a real control; an optional tint colors it (e.g. red for Quit),
+/// and hover deepens the tint. Requires macOS 26, which the app targets.
+struct GlassPillButtonStyle: ButtonStyle {
+    var tint: Color?
+
+    func makeBody(configuration: Configuration) -> some View {
+        GlassPill(configuration: configuration, tint: tint)
+    }
+
+    private struct GlassPill: View {
+        let configuration: Configuration
+        let tint: Color?
+        @State private var isHovered = false
+
+        var body: some View {
+            configuration.label
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .glassEffect(glass, in: Capsule())
+                .contentShape(Capsule())
+                .scaleEffect(configuration.isPressed ? 0.95 : (isHovered ? 1.03 : 1))
+                .onHover { isHovered = $0 }
+                .animation(.snappy(duration: 0.15), value: isHovered)
+                .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+        }
+
+        private var glass: Glass {
+            guard let tint else {
+                return isHovered ? .regular.tint(.primary.opacity(0.06)) : .regular
+            }
+            return .regular.tint(tint.opacity(isHovered ? 0.4 : 0.24))
+        }
+    }
+}
+
+/// Round "Liquid Glass" icon button tinted with the accent color -- used for the header add (+)
+/// so it reads as a primary, tappable glass control instead of a flat glyph. Requires macOS 26,
+/// which the app targets, so `glassEffect` is used unconditionally here.
+struct GlassIconButtonStyle: ButtonStyle {
+    var diameter: CGFloat = 28
+
+    func makeBody(configuration: Configuration) -> some View {
+        GlassIcon(configuration: configuration, diameter: diameter)
+    }
+
+    private struct GlassIcon: View {
+        let configuration: Configuration
+        let diameter: CGFloat
+        @State private var isHovered = false
+
+        var body: some View {
+            configuration.label
+                .foregroundStyle(Theme.accent)
+                .frame(width: diameter, height: diameter)
+                .glassEffect(
+                    .regular.tint(Theme.accent.opacity(isHovered ? 0.55 : 0.38)),
+                    in: Circle()
+                )
+                .contentShape(Circle())
+                .scaleEffect(configuration.isPressed ? 0.92 : (isHovered ? 1.08 : 1))
+                .onHover { isHovered = $0 }
+                .animation(.snappy(duration: 0.15), value: isHovered)
+                .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+        }
+    }
+}
+
 /// Round icon button (the header "+"): grows slightly and gains a glass halo on hover.
 struct HoverIconButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {

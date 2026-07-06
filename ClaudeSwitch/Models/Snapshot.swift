@@ -12,8 +12,11 @@ enum SnapshotFile {
     /// snapshot taken while the DB was mid-write-ahead-log still restores consistently.
     static let cookieFiles = ["Cookies", "Cookies-wal", "Cookies-journal"]
 
-    /// Web storage directories that may carry additional session state.
-    static let storageDirectories = ["Local Storage", "Session Storage"]
+    /// Web storage directories that carry claude.ai's logged-in session state. IndexedDB is
+    /// essential here: claude.ai persists account/session data there, so restoring cookies and
+    /// OAuth tokens without the matching IndexedDB leaves the previous account's data in place and
+    /// the app treats the session as invalid (appears logged out until a manual re-login).
+    static let storageDirectories = ["Local Storage", "Session Storage", "IndexedDB"]
 
     static let metadata = "metadata.json"
 }

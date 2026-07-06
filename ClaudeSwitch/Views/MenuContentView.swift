@@ -93,11 +93,10 @@ struct MenuContentView: View {
                 Button {
                     withAnimation(.snappy) { isAddingAccount = true }
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(Theme.accent)
+                    Image(systemName: "plus")
+                        .font(.system(size: 15, weight: .bold))
                 }
-                .buttonStyle(HoverIconButtonStyle())
+                .buttonStyle(GlassIconButtonStyle())
                 .help("Add current Claude account")
             }
         }
@@ -223,8 +222,7 @@ struct MenuContentView: View {
             } label: {
                 Label("Settings", systemImage: "gearshape")
             }
-            .buttonStyle(HoverPillButtonStyle())
-            .font(.caption)
+            .buttonStyle(GlassPillButtonStyle())
 
             Spacer()
 
@@ -233,8 +231,7 @@ struct MenuContentView: View {
             } label: {
                 Label("Quit", systemImage: "power")
             }
-            .buttonStyle(HoverPillButtonStyle(destructive: true))
-            .font(.caption)
+            .buttonStyle(GlassPillButtonStyle(tint: .red))
         }
         .padding(14)
     }

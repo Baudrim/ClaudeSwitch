@@ -43,11 +43,11 @@ struct AccountRowView: View {
 
                     if account.isActive {
                         Text("Active")
-                            .font(.caption2.weight(.semibold))
+                            .font(.caption2.weight(.bold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Theme.accent.opacity(0.2), in: Capsule())
-                            .foregroundStyle(Theme.accent)
+                            .background(Theme.accent, in: Capsule())
+                            .foregroundStyle(.white)
                     }
                 }
 

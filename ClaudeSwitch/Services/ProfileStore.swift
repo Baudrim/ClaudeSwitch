@@ -132,6 +132,24 @@ final class ProfileStore {
         log.info("[restore] Restored snapshot for \(id)")
     }
 
+    /// Clears the live account's identity (config identity keys + cookies + web storage) so the
+    /// next launch lands on Claude's login screen. Deliberately does NOT touch saved snapshots or
+    /// perform a server-side logout, so an already-captured account stays restorable and valid.
+    /// Call only while Claude is NOT running.
+    func clearLiveSession() throws {
+        var liveJSON = readJSONObject(atPath: liveConfigPath) ?? [:]
+        for key in Self.identityKeys { liveJSON.removeValue(forKey: key) }
+        try writeJSONObject(liveJSON, toPath: liveConfigPath)
+
+        for name in SnapshotFile.cookieFiles {
+            try? fm.removeItem(atPath: liveDir + "/" + name)
+        }
+        for name in SnapshotFile.storageDirectories {
+            try? fm.removeItem(atPath: liveDir + "/" + name)
+        }
+        log.info("[clearLiveSession] Cleared live account identity")
+    }
+
     func deleteSnapshot(for id: UUID) {
         try? fm.removeItem(atPath: snapshotDir(for: id))
         log.info("[deleteSnapshot] Removed snapshot for \(id)")

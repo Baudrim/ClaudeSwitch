@@ -145,6 +145,20 @@ final class ClaudeDesktopService {
         try await launch()
     }
 
+    /// Quits Claude, clears the live session so it reopens on the login screen, and relaunches --
+    /// letting the user sign into a different account to add it. Safe for an already-saved account:
+    /// its snapshot is untouched and there is no server-side logout, so it stays restorable.
+    func logOutForNewAccount() async throws {
+        try await quit()
+        do {
+            try store.clearLiveSession()
+        } catch let error as ProfileStoreError {
+            try? await launch()
+            throw ClaudeDesktopError.store(error)
+        }
+        try await launch()
+    }
+
     // MARK: - Lifecycle
 
     private func quit(timeout: TimeInterval = 8) async throws {
