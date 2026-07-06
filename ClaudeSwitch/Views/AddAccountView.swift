@@ -72,37 +72,42 @@ struct AddAccountView: View {
     }
 
     private func duplicateNotice(_ duplicate: DesktopAccount) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Already saved", systemImage: "checkmark.circle.fill")
-                .font(.subheadline.weight(.semibold))
+        VStack(alignment: .leading, spacing: 12) {
+            Label("“\(duplicate.effectiveLabel)” is already saved", systemImage: "checkmark.circle.fill")
+                .font(.headline)
                 .foregroundStyle(Theme.accent)
+                .fixedSize(horizontal: false, vertical: true)
 
-            Text("Claude is signed into “\(duplicate.effectiveLabel)”, which you've already saved. Refresh its snapshot, or sign out to add a different account.")
+            Text("Claude is currently signed into an account you've already saved. To add a different one, sign out and log into it -- ClaudeSwitch will detect it.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            labelField
+            // Primary call to action: this is usually why the user opened the form while already
+            // on a saved account. Signing out here is local only, so "\(duplicate.effectiveLabel)"
+            // stays saved and valid.
+            Button {
+                Task { await appState.logOutToAddAccount() }
+            } label: {
+                Label("Sign out & add another account", systemImage: "rectangle.portrait.and.arrow.right")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(Theme.accent)
 
             HStack {
-                Button("Cancel") { isPresented = false }
-                    .buttonStyle(HoverPillButtonStyle())
+                Button("Refresh saved session", action: submit)
+                    .buttonStyle(HoverPillButtonStyle(hoverTint: Theme.accent))
                     .font(.caption)
+                    .help("Re-capture this account's current session so its snapshot doesn't go stale")
 
                 Spacer()
 
-                Button("Sign out") {
-                    Task { await appState.logOutToAddAccount() }
-                }
-                .buttonStyle(HoverPillButtonStyle())
-                .font(.caption)
-                .help("Sign out locally and relaunch Claude so you can add a different account")
-
-                Button("Refresh", action: submit)
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
-                    .controlSize(.small)
-                    .disabled(trimmedLabel.isEmpty)
+                Button("Cancel") { isPresented = false }
+                    .buttonStyle(HoverPillButtonStyle())
+                    .font(.caption)
             }
         }
     }
