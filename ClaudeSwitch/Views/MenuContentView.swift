@@ -95,6 +95,26 @@ struct MenuContentView: View {
                 .foregroundStyle(Theme.accent)
             Text("ClaudeSwitch")
                 .font(.headline)
+            if let update = appState.availableUpdate {
+                Button {
+                    openSettings()
+                    NSApp.activate(ignoringOtherApps: true)
+                } label: {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .frame(width: 6, height: 6)
+                        Text("v\(update.version)")
+                    }
+                    // Same solid look as the Active badge: a translucent tint was unreadable on glass.
+                    .font(.caption2.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Theme.accent, in: Capsule())
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .help("ClaudeSwitch \(update.version) is available -- see Settings")
+            }
             Spacer()
             if appState.isClaudeInstalled && !isAddingAccount {
                 Button {

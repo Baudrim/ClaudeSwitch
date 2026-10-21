@@ -23,10 +23,21 @@ final class AppState {
     private(set) var quitHold: QuitHold?
     var lastError: ActionableError?
 
+    /// A newer release found on GitHub, if any.
+    private(set) var availableUpdate: AvailableUpdate?
+    private(set) var isCheckingForUpdates = false
+    private(set) var lastUpdateCheck: Date?
+    private(set) var updateCheckError: String?
+    var checksForUpdatesAutomatically = true {
+        didSet { defaults.set(checksForUpdatesAutomatically, forKey: autoUpdateCheckKey) }
+    }
+
     @ObservationIgnored private let store = ProfileStore()
     @ObservationIgnored private lazy var desktop = ClaudeDesktopService(store: store)
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private let accountsKey = "com.claudeswitch.accounts"
+    @ObservationIgnored private let autoUpdateCheckKey = "com.claudeswitch.autoUpdateCheck"
+    @ObservationIgnored private let lastUpdateCheckKey = "com.claudeswitch.lastUpdateCheck"
 
     var activeAccount: DesktopAccount? { accounts.first(where: \.isActive) }
     var hasManualClaudeAppOverride: Bool { desktop.hasManualAppOverride }
@@ -37,6 +48,9 @@ final class AppState {
         refreshInstallState()
         observeClaudeInstances()
         desktop.onQuitHeld = { [weak self] hold in self?.quitHold = hold }
+        checksForUpdatesAutomatically = defaults.object(forKey: autoUpdateCheckKey) as? Bool ?? true
+        lastUpdateCheck = defaults.object(forKey: lastUpdateCheckKey) as? Date
+        startAutomaticUpdateChecks()
     }
 
     /// Re-checks whether Claude.app can be found and which accounts are open side by side. Call
@@ -131,6 +145,38 @@ final class AppState {
         await run(busyMessage: "Switching to \(account.effectiveLabel)…") {
             try await self.desktop.switchAccount(to: account, currentActiveId: self.activeAccount?.id)
             self.markActive(account.id)
+        }
+    }
+
+    // MARK: - Updates
+
+    func checkForUpdates() async {
+        guard !isCheckingForUpdates else { return }
+        isCheckingForUpdates = true
+        defer { isCheckingForUpdates = false }
+        do {
+            availableUpdate = try await UpdateChecker.fetchUpdate()
+            updateCheckError = nil
+            lastUpdateCheck = Date()
+            defaults.set(lastUpdateCheck, forKey: lastUpdateCheckKey)
+        } catch {
+            log.warning("[checkForUpdates] \(error.localizedDescription)")
+            updateCheckError = error.localizedDescription
+        }
+    }
+
+    /// Checks at launch, then once a day while ClaudeSwitch keeps running in the menu bar.
+    private func startAutomaticUpdateChecks() {
+        Task { [weak self] in
+            var isLaunch = true
+            while !Task.isCancelled {
+                if let self, self.checksForUpdatesAutomatically {
+                    let isDue = Date().timeIntervalSince(self.lastUpdateCheck ?? .distantPast) >= 24 * 60 * 60
+                    if isLaunch || isDue { await self.checkForUpdates() }
+                }
+                isLaunch = false
+                try? await Task.sleep(for: .seconds(60 * 60))
+            }
         }
     }
 
