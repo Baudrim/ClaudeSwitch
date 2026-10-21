@@ -44,7 +44,8 @@ Snapshots live under `~/Library/Application Support/ClaudeSwitch/snapshots/<uuid
 1. **First launch:** ClaudeSwitch will ask for **Automation** permission the first time it needs to quit/relaunch Claude (System Settings > Privacy & Security > Automation). This is required to swap the active session.
 2. **Add an account:** sign into Claude with the account you want to save, then click **+** in the menu bar dropdown and give it a label. Claude's own UI handles login; ClaudeSwitch just captures the result.
 3. **Switch:** click **Switch** on any saved account. ClaudeSwitch quits Claude, restores that account's snapshot, and relaunches. The active account slides to the top.
-4. **Refresh:** re-captures the currently active account's session so its snapshot doesn't go stale.
+4. **Side by Side:** opens a saved account in a second Claude window while the active one keeps running, so you can use two accounts at once (e.g. personal + work). It gets its own data folder under `~/Library/Application Support/ClaudeSwitch/side-by-side/`; **Show** brings it forward and **Close** quits it.
+5. **Refresh:** re-captures the currently active account's session so its snapshot doesn't go stale.
 
 ## For developers
 

@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// A single account entry: avatar, editable label, active badge, and switch/remove actions.
+/// A single account entry: avatar, editable label, active / side-by-side badge, and the
+/// switch, side-by-side and remove actions.
 struct AccountRowView: View {
     @Environment(AppState.self) private var appState
     let account: DesktopAccount
+
+    private var isSideBySide: Bool { appState.isSideBySide(account) }
 
     @State private var isEditingLabel = false
     @State private var editedLabel = ""
@@ -28,7 +31,11 @@ struct AccountRowView: View {
                                 .lineLimit(1)
                         }
 
-                        if let lastUsed = account.lastUsed {
+                        if isSideBySide {
+                            Text("Open in its own window")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else if let lastUsed = account.lastUsed {
                             Text(lastUsed, format: .relative(presentation: .named))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
@@ -48,6 +55,13 @@ struct AccountRowView: View {
                             .padding(.vertical, 3)
                             .background(Theme.accent, in: Capsule())
                             .foregroundStyle(.white)
+                    } else if isSideBySide {
+                        Label("Side by Side", systemImage: "rectangle.split.2x1")
+                            .font(.caption2.weight(.bold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Theme.accent.opacity(0.18), in: Capsule())
+                            .foregroundStyle(Theme.accent)
                     }
                 }
 
@@ -79,22 +93,30 @@ struct AccountRowView: View {
                         .buttonStyle(HoverPillButtonStyle(destructive: true))
                         .font(.caption.weight(.semibold))
                     } else {
+                        // Icon-only so the row keeps room for two labeled actions on the right.
                         Button {
                             editedLabel = account.label
                             isEditingLabel = true
                         } label: {
                             Label("Rename", systemImage: "pencil")
+                                .labelStyle(.iconOnly)
                         }
                         .buttonStyle(HoverPillButtonStyle())
                         .font(.caption)
+                        .help("Rename")
 
-                        Button {
-                            isConfirmingRemove = true
-                        } label: {
-                            Label("Remove", systemImage: "trash")
+                        // Its data folder is in use while open side by side.
+                        if !isSideBySide {
+                            Button {
+                                isConfirmingRemove = true
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                                    .labelStyle(.iconOnly)
+                            }
+                            .buttonStyle(HoverPillButtonStyle(destructive: true))
+                            .font(.caption)
+                            .help("Remove")
                         }
-                        .buttonStyle(HoverPillButtonStyle(destructive: true))
-                        .font(.caption)
 
                         Spacer()
 
@@ -105,7 +127,31 @@ struct AccountRowView: View {
                                 Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
                             }
                             .buttonStyle(GlassPillButtonStyle(tint: Theme.accent, minWidth: 64))
+                        } else if isSideBySide {
+                            Button {
+                                Task { await appState.closeSideBySide(account) }
+                            } label: {
+                                Label("Close", systemImage: "xmark")
+                            }
+                            .buttonStyle(GlassPillButtonStyle())
+                            .help("Quit this account's Claude window")
+
+                            Button {
+                                appState.showSideBySide(account)
+                            } label: {
+                                Label("Show", systemImage: "macwindow")
+                            }
+                            .buttonStyle(GlassPillButtonStyle(tint: Theme.accent, minWidth: 64))
+                            .help("Bring this account's Claude window to the front")
                         } else {
+                            Button {
+                                Task { await appState.openSideBySide(account) }
+                            } label: {
+                                Label("Side by Side", systemImage: "rectangle.split.2x1")
+                            }
+                            .buttonStyle(GlassPillButtonStyle())
+                            .help("Open this account in a second Claude window, alongside the active one")
+
                             Button {
                                 Task { await appState.switchTo(account) }
                             } label: {

@@ -32,6 +32,8 @@ struct MenuContentView: View {
             footer
         }
         .frame(width: Theme.contentWidth)
+        // Room for the held-up quit card even when only one account is listed.
+        .frame(minHeight: appState.quitHold == nil ? nil : 280)
         .overlay {
             if appState.isBusy {
                 busyOverlay
@@ -244,17 +246,79 @@ struct MenuContentView: View {
     private var busyOverlay: some View {
         ZStack {
             Color.black.opacity(0.15)
-            VStack(spacing: 10) {
-                ProgressView()
-                    .controlSize(.large)
-                if let message = appState.busyMessage {
-                    Text(message)
-                        .font(.caption.weight(.medium))
+            Group {
+                if let hold = appState.quitHold {
+                    quitHoldCard(hold)
+                } else {
+                    VStack(spacing: 10) {
+                        ProgressView()
+                            .controlSize(.large)
+                        if let message = appState.busyMessage {
+                            Text(message)
+                                .font(.caption.weight(.medium))
+                        }
+                    }
                 }
             }
             .padding(20)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.horizontal, 14)
         }
         .ignoresSafeArea()
+        .animation(.snappy(duration: 0.25), value: appState.quitHold)
+    }
+
+    /// Explains why Claude hasn't quit yet and offers the way out that fits: answering Claude's
+    /// own prompt, or force quitting once it's only lingering.
+    private func quitHoldCard(_ hold: QuitHold) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: hold == .askingToConfirm ? "exclamationmark.bubble.fill" : "hourglass")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+                .symbolEffect(.pulse, isActive: hold == .stillClosing)
+
+            Text(hold == .askingToConfirm ? "Claude is still working" : "Claude is still closing")
+                .font(.subheadline.weight(.semibold))
+
+            Group {
+                switch hold {
+                case .askingToConfirm:
+                    Text("Background tasks are running, so Claude is asking before it quits. Choose **Quit Anyway** in Claude to stop them, and ClaudeSwitch will carry on.")
+                case .stillClosing:
+                    Text("Its windows are closed, but background tasks are still finishing. ClaudeSwitch will carry on as soon as Claude is gone.")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Button("Stop Waiting") {
+                    appState.stopWaitingForClaude()
+                }
+                .buttonStyle(GlassPillButtonStyle())
+                .help("Leave Claude as it is and cancel this action")
+
+                switch hold {
+                case .askingToConfirm:
+                    Button {
+                        appState.showClaudeBeingQuit()
+                    } label: {
+                        Label("Show Claude", systemImage: "macwindow")
+                    }
+                    .buttonStyle(GlassPillButtonStyle(tint: Theme.accent))
+                case .stillClosing:
+                    Button {
+                        appState.forceQuitClaude()
+                    } label: {
+                        Label("Force Quit", systemImage: "xmark.octagon")
+                    }
+                    .buttonStyle(GlassPillButtonStyle(tint: .red))
+                    .help("Stop Claude's remaining background tasks now")
+                }
+            }
+            .padding(.top, 2)
+        }
     }
 }

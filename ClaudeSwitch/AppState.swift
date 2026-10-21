@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Observation
 
 private let log = FileLog("AppState")
@@ -17,6 +17,10 @@ final class AppState {
     private(set) var isBusy = false
     private(set) var busyMessage: String?
     private(set) var isClaudeInstalled = false
+    /// Accounts currently open in their own Claude window, alongside the active one.
+    private(set) var sideBySideIds: Set<UUID> = []
+    /// Why the Claude quit behind the current operation is taking a while, if it is.
+    private(set) var quitHold: QuitHold?
     var lastError: ActionableError?
 
     @ObservationIgnored private let store = ProfileStore()
@@ -31,13 +35,20 @@ final class AppState {
     init() {
         loadAccounts()
         refreshInstallState()
+        observeClaudeInstances()
+        desktop.onQuitHeld = { [weak self] hold in self?.quitHold = hold }
     }
 
-    /// Re-checks whether Claude.app can be found. Call whenever the menu/settings reopen, or
-    /// after the user picks (or resets) a manual app location, since Launch Services state can
-    /// change without us being notified.
+    /// Re-checks whether Claude.app can be found and which accounts are open side by side. Call
+    /// whenever the menu/settings reopen, or after the user picks (or resets) a manual app
+    /// location, since Launch Services state can change without us being notified.
     func refreshInstallState() {
         isClaudeInstalled = desktop.isInstalled
+        sideBySideIds = desktop.runningSideBySideIds
+    }
+
+    func isSideBySide(_ account: DesktopAccount) -> Bool {
+        sideBySideIds.contains(account.id)
     }
 
     // MARK: - Add / Refresh
@@ -116,10 +127,62 @@ final class AppState {
     // MARK: - Switch
 
     func switchTo(_ account: DesktopAccount) async {
-        guard account.id != activeAccount?.id else { return }
+        guard account.id != activeAccount?.id, !isSideBySide(account) else { return }
         await run(busyMessage: "Switching to \(account.effectiveLabel)…") {
             try await self.desktop.switchAccount(to: account, currentActiveId: self.activeAccount?.id)
             self.markActive(account.id)
+        }
+    }
+
+    // MARK: - Held-up Quit
+
+    func showClaudeBeingQuit() {
+        desktop.showClaudeBeingQuit()
+    }
+
+    func stopWaitingForClaude() {
+        desktop.stopWaitingForQuit()
+    }
+
+    func forceQuitClaude() {
+        desktop.forceQuitPending()
+    }
+
+    // MARK: - Side by Side
+
+    /// Opens `account` in a second Claude window next to the active one, so both accounts can be
+    /// used at the same time without switching back and forth.
+    func openSideBySide(_ account: DesktopAccount) async {
+        guard !account.isActive else { return }
+        await run(busyMessage: "Opening \(account.effectiveLabel) side by side…") {
+            try await self.desktop.openSideBySide(account.id)
+            self.touch(account.id)
+        }
+    }
+
+    func showSideBySide(_ account: DesktopAccount) {
+        desktop.activateSideBySide(account.id)
+    }
+
+    func closeSideBySide(_ account: DesktopAccount) async {
+        await run(busyMessage: "Closing \(account.effectiveLabel)…") {
+            try await self.desktop.closeSideBySide(account.id)
+        }
+    }
+
+    /// Keeps `sideBySideIds` live when the user opens or quits a Claude window outside
+    /// ClaudeSwitch (e.g. ⌘Q in the side-by-side window).
+    private func observeClaudeInstances() {
+        let center = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                let bundleId = app?.bundleIdentifier
+                Task { @MainActor in
+                    guard bundleId == ClaudeDesktopService.bundleIdentifier else { return }
+                    self?.refreshInstallState()
+                }
+            }
         }
     }
 
@@ -132,8 +195,10 @@ final class AppState {
     }
 
     func remove(_ account: DesktopAccount) {
+        guard !isSideBySide(account) else { return }
         accounts.removeAll { $0.id == account.id }
         store.deleteSnapshot(for: account.id)
+        store.deleteSideBySideData(for: account.id)
         saveAccounts()
     }
 
@@ -143,6 +208,10 @@ final class AppState {
         log.info("[resetAll] Removing \(accounts.count) account(s) and their snapshots")
         for account in accounts {
             store.deleteSnapshot(for: account.id)
+            // A running side-by-side instance still has its data folder open; leave it be.
+            if !isSideBySide(account) {
+                store.deleteSideBySideData(for: account.id)
+            }
         }
         accounts = []
         saveAccounts()
@@ -157,12 +226,16 @@ final class AppState {
         lastError = nil
         do {
             try await operation()
+        } catch ClaudeDesktopError.quitCancelled {
+            // The user chose Stop Waiting themselves; nothing changed, so no error to show.
+            log.info("Operation cancelled while waiting for Claude to quit")
         } catch {
             log.error("Operation failed: \(error.localizedDescription)")
             lastError = ActionableError(error)
         }
         isBusy = false
         self.busyMessage = nil
+        quitHold = nil
         refreshInstallState()
     }
 

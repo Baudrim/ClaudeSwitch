@@ -34,6 +34,8 @@ final class ProfileStore {
     private let fm = FileManager.default
     let liveDir: String
     private let snapshotsRoot: String
+    /// Parent of the per-account Claude data folders used to run accounts side by side.
+    private let sideBySideRoot: String
 
     /// `config.json` keys that together identify the logged-in account and its OAuth session.
     /// Only these are merged back on restore -- everything else in config.json (theme, locale,
@@ -53,10 +55,23 @@ final class ProfileStore {
     init(liveDir: String, snapshotsRoot: String) {
         self.liveDir = liveDir
         self.snapshotsRoot = snapshotsRoot
+        self.sideBySideRoot = (snapshotsRoot as NSString).deletingLastPathComponent + "/side-by-side"
         try? fm.createDirectory(atPath: snapshotsRoot, withIntermediateDirectories: true)
     }
 
     var liveConfigPath: String { liveDir + "/config.json" }
+
+    /// Last time Claude wrote its config.json. It does so on every launch and token refresh, so
+    /// this tells how recently the live session was used.
+    var liveSessionModifiedAt: Date? {
+        (try? fm.attributesOfItem(atPath: liveConfigPath))?[.modificationDate] as? Date
+    }
+
+    func snapshotCapturedAt(for id: UUID) -> Date? {
+        guard let data = fm.contents(atPath: snapshotDir(for: id) + "/" + SnapshotFile.metadata),
+              let metadata = try? JSONDecoder().decode(SnapshotMetadata.self, from: data) else { return nil }
+        return metadata.capturedAt
+    }
 
     /// Reads `lastKnownAccountUuid` from the live config, if Claude has ever logged in.
     /// Safe to call while Claude is running (this is a read, not a write).
@@ -153,6 +168,70 @@ final class ProfileStore {
     func deleteSnapshot(for id: UUID) {
         try? fm.removeItem(atPath: snapshotDir(for: id))
         log.info("[deleteSnapshot] Removed snapshot for \(id)")
+    }
+
+    // MARK: - Side by Side
+
+    /// Claude data folder `id` uses when running side by side with the main instance (passed to
+    /// Claude as `--user-data-dir`), so both can stay signed into different accounts at once.
+    func sideBySideDir(for id: UUID) -> String {
+        sideBySideRoot + "/" + id.uuidString
+    }
+
+    /// Inverse of `sideBySideDir(for:)`: which account a running instance's data folder belongs to.
+    func sideBySideAccountId(forDataDir path: String) -> UUID? {
+        let url = URL(fileURLWithPath: path).standardizedFileURL
+        guard url.deletingLastPathComponent().path == URL(fileURLWithPath: sideBySideRoot).standardizedFileURL.path else {
+            return nil
+        }
+        return UUID(uuidString: url.lastPathComponent)
+    }
+
+    /// Makes sure `id`'s side-by-side data folder holds its freshest session, and returns it.
+    /// The folder is seeded from the snapshot the first time, and again whenever the snapshot is
+    /// newer (the account was used, then re-captured, in the main instance since). Otherwise it
+    /// is left alone: the side-by-side session is itself the freshest copy.
+    /// Call only while that side-by-side instance is NOT running.
+    func prepareSideBySide(for id: UUID) throws -> String {
+        let instance = sideBySideStore(for: id)
+        let snapshotDate = snapshotCapturedAt(for: id) ?? .distantPast
+        let sessionDate = instance.liveSessionModifiedAt ?? .distantPast
+        if instance.readLiveAccountId() != id || snapshotDate > sessionDate {
+            do {
+                try fm.createDirectory(atPath: instance.liveDir, withIntermediateDirectories: true)
+            } catch {
+                throw ProfileStoreError.ioFailure(error.localizedDescription)
+            }
+            try instance.restore(id: id)
+            log.info("[prepareSideBySide] Seeded side-by-side folder for \(id) from its snapshot")
+        }
+        return instance.liveDir
+    }
+
+    /// Copies `id`'s side-by-side session back into its snapshot when it is the fresher of the
+    /// two, so switching the main instance to that account picks up where the side-by-side
+    /// window left off instead of restoring stale tokens.
+    /// Call only while that side-by-side instance is NOT running.
+    func syncSnapshotFromSideBySide(id: UUID) {
+        let instance = sideBySideStore(for: id)
+        guard instance.readLiveAccountId() == id,
+              let sessionDate = instance.liveSessionModifiedAt,
+              sessionDate > snapshotCapturedAt(for: id) ?? .distantPast else { return }
+        do {
+            try instance.capture(id: id)
+        } catch {
+            log.warning("[syncSnapshotFromSideBySide] Failed for \(id): \(error.localizedDescription)")
+        }
+    }
+
+    func deleteSideBySideData(for id: UUID) {
+        try? fm.removeItem(atPath: sideBySideDir(for: id))
+    }
+
+    /// A store whose "live" profile is `id`'s side-by-side folder, so the same capture/restore
+    /// logic can seed that folder from the snapshot or sync it back.
+    private func sideBySideStore(for id: UUID) -> ProfileStore {
+        ProfileStore(liveDir: sideBySideDir(for: id), snapshotsRoot: snapshotsRoot)
     }
 
     // MARK: - Helpers
