@@ -196,16 +196,100 @@ final class ProfileStore {
         let instance = sideBySideStore(for: id)
         let snapshotDate = snapshotCapturedAt(for: id) ?? .distantPast
         let sessionDate = instance.liveSessionModifiedAt ?? .distantPast
+        do {
+            try fm.createDirectory(atPath: instance.liveDir, withIntermediateDirectories: true)
+        } catch {
+            throw ProfileStoreError.ioFailure(error.localizedDescription)
+        }
         if instance.readLiveAccountId() != id || snapshotDate > sessionDate {
-            do {
-                try fm.createDirectory(atPath: instance.liveDir, withIntermediateDirectories: true)
-            } catch {
-                throw ProfileStoreError.ioFailure(error.localizedDescription)
-            }
             try instance.restore(id: id)
             log.info("[prepareSideBySide] Seeded side-by-side folder for \(id) from its snapshot")
         }
+        shareMachineState(for: id, withSideBySideDir: instance.liveDir)
         return instance.liveDir
+    }
+
+    // MARK: - Machine-local state
+
+    /// Per-account folders of Code and Cowork sessions. They live outside the identity files, so
+    /// switching never touches them: each account keeps its own folder in Claude's data folder.
+    private static let sessionDirectories = ["claude-code-sessions", "local-agent-mode-sessions"]
+
+    /// Makes the side-by-side instance the same computer, for `id`, as the main instance.
+    ///
+    /// Claude keys local Code/Cowork sessions to this device (`ant-did`, plus the account's device
+    /// registration in `ant-device-registry.json`) and keeps them in per-account folders. A fresh
+    /// data folder gets a new device id and empty folders, so Claude sees the account's existing
+    /// sessions as living on another, unreachable computer. Copying the device identity and linking
+    /// the account's session folders to the main folder's fixes that; it's safe because an account
+    /// is never open in both instances at once.
+    private func shareMachineState(for id: UUID, withSideBySideDir dir: String) {
+        // Claude refuses an ant-did that isn't a plain file, so it's copied rather than linked.
+        copyIfExists(from: liveDir + "/" + SnapshotFile.deviceId, to: dir + "/" + SnapshotFile.deviceId)
+        shareDeviceRegistration(for: id, withSideBySideDir: dir)
+        for name in Self.sessionDirectories {
+            linkSessionDirectory(name, for: id, sideBySideDir: dir)
+        }
+    }
+
+    /// Carries the account's device registration over with the device id it belongs to; without
+    /// a registration of its own, Claude registers the device again on next use.
+    private func shareDeviceRegistration(for id: UUID, withSideBySideDir dir: String) {
+        let key = id.uuidString.lowercased()
+        let mainPath = liveDir + "/" + SnapshotFile.deviceRegistry
+        let sidePath = dir + "/" + SnapshotFile.deviceRegistry
+        var side = readJSONObject(atPath: sidePath) ?? [:]
+        side[key] = readJSONObject(atPath: mainPath)?[key]
+        do {
+            try writeJSONObject(side, toPath: sidePath)
+        } catch {
+            log.warning("[shareDeviceRegistration] Failed for \(id): \(error.localizedDescription)")
+        }
+    }
+
+    /// Points the side-by-side folder's `<name>/<account>` at the main folder's, so the account's
+    /// sessions are the same whichever instance it's open in. Sessions created side by side before
+    /// the link existed are merged into the main folder first, so none are lost.
+    private func linkSessionDirectory(_ name: String, for id: UUID, sideBySideDir dir: String) {
+        let key = id.uuidString.lowercased()
+        let target = liveDir + "/" + name + "/" + key
+        let link = dir + "/" + name + "/" + key
+        if (try? fm.destinationOfSymbolicLink(atPath: link)) == target { return }
+
+        do {
+            try fm.createDirectory(atPath: target, withIntermediateDirectories: true)
+            var isDirectory: ObjCBool = false
+            if fm.fileExists(atPath: link, isDirectory: &isDirectory), isDirectory.boolValue {
+                mergeNewer(from: link, into: target)
+            }
+            try? fm.removeItem(atPath: link)
+            try fm.createDirectory(atPath: dir + "/" + name, withIntermediateDirectories: true)
+            try fm.createSymbolicLink(atPath: link, withDestinationPath: target)
+            log.info("[linkSessionDirectory] Linked \(name) for \(id) to the main folder")
+        } catch {
+            log.warning("[linkSessionDirectory] \(name) for \(id): \(error.localizedDescription)")
+        }
+    }
+
+    /// Recursively copies items from `source` into `destination` that are missing there or newer.
+    private func mergeNewer(from source: String, into destination: String) {
+        guard let children = try? fm.contentsOfDirectory(atPath: source) else { return }
+        for child in children {
+            let from = source + "/" + child
+            let to = destination + "/" + child
+            var isDirectory: ObjCBool = false
+            guard fm.fileExists(atPath: from, isDirectory: &isDirectory) else { continue }
+            if isDirectory.boolValue {
+                try? fm.createDirectory(atPath: to, withIntermediateDirectories: true)
+                mergeNewer(from: from, into: to)
+            } else if !fm.fileExists(atPath: to) || modificationDate(from) > modificationDate(to) {
+                copyIfExists(from: from, to: to)
+            }
+        }
+    }
+
+    private func modificationDate(_ path: String) -> Date {
+        ((try? fm.attributesOfItem(atPath: path))?[.modificationDate] as? Date) ?? .distantPast
     }
 
     /// Copies `id`'s side-by-side session back into its snapshot when it is the fresher of the

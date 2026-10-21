@@ -19,6 +19,11 @@ enum SnapshotFile {
     static let storageDirectories = ["Local Storage", "Session Storage", "IndexedDB"]
 
     static let metadata = "metadata.json"
+
+    /// This install's device id, and the per-account device registrations made with it. Not part
+    /// of a snapshot (they identify the machine, not the account); shared with side-by-side folders.
+    static let deviceId = "ant-did"
+    static let deviceRegistry = "ant-device-registry.json"
 }
 
 /// Small sidecar written alongside every snapshot, useful for diagnostics (`Settings` panel,
